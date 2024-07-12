@@ -1,0 +1,716 @@
+\documentclass{beamer}
+%\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+%\usepackage{lmodern}  % Use the Latin Modern font family
+
+\usepackage{latexsym,amsmath,xcolor,bm, amssymb, color, tikz, graphicx, amsthm, mathtools}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{hyperref}
+\usepackage{float}     
+\usepackage{CJKutf8}
+\usepackage{multicol}
+\usepackage{listings}
+\usepackage{graphicx}
+
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator{\sign}{sign}
+\DeclareMathOperator{\Tr}{Tr}
+
+\makeatletter
+\DeclareRobustCommand\onedot{\futurelet\@let@token\@onedot}
+\def\@onedot{\ifx\@let@token.\else.\null\fi\xspace}
+\def\eg{\emph{e.g}\onedot} 
+\def\Eg{\emph{E.g}\onedot}
+\def\ie{\emph{i.e}\onedot} 
+\def\Ie{\emph{I.e}\onedot}
+\def\cf{\emph{c.f}\onedot} 
+\def\Cf{\emph{C.f}\onedot}
+\def\etc{\emph{etc}\onedot} 
+\def\vs{\emph{vs}\onedot}
+\def\wrt{w.r.t\onedot} 
+\def\dof{d.o.f\onedot}
+\def\etal{\emph{et al}\onedot}
+\makeatother
+
+
+\usetheme{Madrid}
+\useinnertheme{circles}
+
+
+\definecolor{ColorUNR}{HTML}{990077}
+\definecolor{NavyBlue}{HTML}{000080}
+\definecolor{Mahogany}{HTML}{C04000}
+\definecolor{OliveGreen}{HTML}{808000}
+\definecolor{Plum}{HTML}{DDA0DD}
+\usecolortheme[named=ColorUNR]{structure}
+%\usecolortheme[named=ColorUNR]{exampleblock}
+
+%\setbeamertemplate{blocks}[rounded][shadow=true]
+%\setbeamercolor{block body}{fg=black,bg=white}
+
+
+
+%------------------------------------------------------------
+%This block of code defines the information to appear in the
+%Title page
+\title %optional
+{Busqueda Binaria y Ventana Deslizante}
+
+\subtitle{Aprende binary search pibe}
+
+%\subtitle{with applications to persuation and lie production}
+% \author % (optional)
+% {Author Name}
+
+\author[Matias Ramos]{Matias Ramos}
+
+\institute[]{Universidad Tecnológica Nacional - Facultad Regional Santa Fe}
+\date[TC 2024]{Training Camp 2024}
+\titlegraphic{\includegraphics[clip,height=2cm,keepaspectratio]{logos/tcarg.jpeg}}
+
+%End of title page configuration block
+%------------------------------------------------------------
+
+
+%------------------------------------------------------------
+%The next block of commands puts the table of contents at the 
+%beginning of each section and highlights the current section:
+\AtBeginSection[]
+{
+  \begin{frame}
+    \frametitle{Temas}
+    \tableofcontents[currentsection]
+  \end{frame}
+}
+%------------------------------------------------------------
+\let\ust\underset
+\let\ost\overset
+
+\begin{document}
+
+\defverbatim[colored]\busquedaLineal
+{
+	\begin{lstlisting}[language=C++,basicstyle=\ttfamily,keywordstyle=\color{NavyBlue},commentstyle=\color{Mahogany}\ttfamily]
+    for (int i = 0; i < n; i++) {
+        if (array[i] == X) {
+            // encontre X
+        }
+    }
+	\end{lstlisting}
+}
+
+\defverbatim[colored]\busquedaBinariaNormal
+{
+	\begin{lstlisting}[language=C++,basicstyle=\ttfamily,keywordstyle=\color{NavyBlue},commentstyle=\color{Mahogany}\ttfamily]
+    int a = 0, b = n-1;
+    while (a <= b) {
+        int k = (a+b)/2;
+        if (array[k] == x) {
+            // encontre X en indice K
+        }
+        if (array[k] > x) b = k-1;
+        else a = k+1;
+    }
+    \end{lstlisting}
+}
+
+\defverbatim[colored]\busquedaBinariaTricky
+{
+	\begin{lstlisting}[language=C++,basicstyle=\ttfamily,keywordstyle=\color{NavyBlue},commentstyle=\color{Mahogany}\ttfamily]
+    int k = 0;
+    for (int b = n/2; b >= 1; b /= 2) {
+        while (k+b < n && array[k+b] <= x) k += b;
+    }
+    if (array[k] == x) {
+        // encontre X en indice K
+    }
+    \end{lstlisting}
+}
+
+\defverbatim[colored]\busquedaBinariaDisp
+{
+	\begin{lstlisting}[language=C++,basicstyle=\ttfamily,keywordstyle=\color{NavyBlue},commentstyle=\color{Mahogany}\ttfamily]
+    int x = -1;
+    for (int b = z; b >= 1; b /= 2) {
+        while (!ok(x+b)) x += b;
+    }
+    int k = x+1;
+    \end{lstlisting}
+}
+
+\defverbatim[colored]\ventanaDeslizante
+{
+{\fontsize{7.5pt}{8.5pt}
+	\begin{lstlisting}[language=C++,basicstyle=\ttfamily,keywordstyle=\color{NavyBlue}, commentstyle=\color{Mahogany}\ttfamily,]
+// En iR, jR devolvemos la respuesta
+void ventanaDeslizante(vector<int> &A, int x, int &iR, int &jR) 
+{ 
+   int n = int(A.size()), j = 0, suma = 0; // La suma en [0,0) es 0
+   for(int i = 0; i < n; i++) // para cada ventana que empieza en i:
+   {
+      // Ingresamos a la ventana hasta pasarnos con la suma desde i
+      while (j < n && suma < x) 
+      {
+         suma += A[j];
+         j++;
+      }
+      // Al salir del while: (suma >= x) o (j == n)
+      if (suma == x)
+      {
+         iR = i;
+         jR = j;
+      }
+      // Al avanzar i, sale de la ventana      
+      suma -= A[i];
+  }
+}
+	\end{lstlisting}
+}
+}
+
+\defverbatim[colored]\ventanaDeslizanteDOSSUM
+{
+{\fontsize{9.5pt}{11.4pt}
+	\begin{lstlisting}[language=C++,basicstyle=\ttfamily,keywordstyle=\color{NavyBlue}, commentstyle=\color{Mahogany}\ttfamily,]
+// En iR, jR devolvemos la respuesta
+void ventanaDeslizante(vector<int> &A, int x, int &iR,  
+{                                             int &jR) 
+   int n = int(A.size()), j = n-1;
+   for(int i = 0; i < n; i++) // fijando el extremo i:
+   { // mientras la suma sea > x, disminuimos j
+      while (j > i && A[i] + A[j] > x) 
+         j--;
+      // Sale del while : (A[i] + A[j] <= x) o (j == i)
+      if (j > i && A[i] + A[j] == x)
+      {
+         iR = i;
+         jR = j;
+      } 
+   }
+}
+	\end{lstlisting}
+}
+}
+
+%The next statement creates the title page.
+\frame{\titlepage}
+
+
+%------------------------------------------------------------
+% Frame de Sponsors, me parece mejor ponerlo al principio
+% Antes del índice/contenido
+
+\begin{frame}{Gracias Sponsors!}
+    \begin{columns}[t]
+        \column{0.5\textwidth}
+        \centering
+        Organizador\\
+        \vspace{0.8cm}
+        \includegraphics[width=0.7\textwidth,keepaspectratio]{logos/UNRlogo.png}
+        \includegraphics[width=0.7\textwidth,keepaspectratio]{logos/FCEIA.png}
+        \column{0.5\textwidth}
+        \centering
+        Diamond\\
+        \includegraphics[width=1\textwidth,keepaspectratio]{logos/GTSlogo.jpeg}
+    \end{columns}
+    \begin{columns}[t]
+        \column{1.0\textwidth}
+        \centering
+        Gold\\
+        \begin{minipage}{0.5\textwidth}
+            \centering
+            \includegraphics[width=0.4\textwidth,keepaspectratio]{logos/avature.jpg}
+        \end{minipage}%
+        \begin{minipage}{0.5\textwidth}
+            \centering
+            \includegraphics[width=0.4\textwidth,keepaspectratio]{logos/Acc_Logo_Black_Purple_RGB.png}
+        \end{minipage}
+    \end{columns}
+\end{frame}
+
+
+%---------------------------------------------------------
+%This block of code is for the table of contents after
+%the title page
+\begin{frame}
+\frametitle{Temas}
+\tableofcontents
+\end{frame}
+%---------------------------------------------------------
+
+
+\section{Busqueda Lineal}
+\begin{frame}{Problema base}
+    \begin{block}{Problema}
+        Tengo un arreglo $ordenado$ de $N$ elementos. 
+        Quiero encontrar el elemento $X$ dentro de ese arreglo.
+    \end{block}
+\end{frame}
+\begin{frame}{Busqueda Lineal}
+    \busquedaLineal
+    \centering
+    Complejidad\\
+    \pause
+    $O(n)$
+\end{frame}
+
+\section{Busqueda Binaria}
+\begin{frame}{Problema base}
+    \begin{block}{Problema}
+        Tengo un arreglo $\bm{ordenado}$ de $N$ elementos. 
+        Quiero encontrar el elemento $X$ dentro de ese arreglo.
+    \end{block}
+    Recordemos busqueda binaria
+\end{frame}
+\begin{frame}{Veamos un ejemplo}
+    \centering
+    \begin{tabular}{| c | c | c | c | c | c | c | c | c |}
+        0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 \\
+        \hline
+        1 & 1 & 4 & 5 & 6 & 10 & 11 & 11 & 23 \\
+        \hline
+    \end{tabular}
+\end{frame}
+\begin{frame}{Implementación Busqueda Binaria}
+    \busquedaBinariaNormal
+    \centering
+    Complejidad\\
+    \pause
+    $O(log n)$
+\end{frame}
+
+\begin{frame}{Implementacion Alternativa/Iterativa}
+    \begin{itemize}
+        \item Iterar eficientemente el arreglo de izquierda a derecha.
+        \item Hacer saltos y disminuir la longitud de los mismos cuando nos acercamos al elemento buscado.
+        \item La longitud inicial es $n/2$. En cada salto la longitud del salto se divide a la mitad. $n/4$, $n/8$, $n/16$\dots
+        \item Hasta que la longitud sea $1$.
+        \item Luego de este proceso el elemento es encontrado, o sabemos que no aparece en el arreglo.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Implementacion Alternativa/Iterativa}
+    \busquedaBinariaTricky
+    Complejidad $O(log n)$
+\end{frame}
+
+\section{Frase motivadora}
+\begin{frame}{Frase motivadora}
+  \begin{quote}
+    ...go and solve some problems, learn how to use binary search.
+  \end{quote}
+  \href{https://codeforces.com/blog/entry/92248}{Um\_nik, World Champion 2020.}
+\end{frame}
+
+\section{Busqueda Binaria sobre la respuesta}  
+\begin{frame}{Problema disparador}
+    Supongamos que queremos encontrar el valor más chico de $K$ que es una solución válida para un problema.\\
+    Tenemos una función $ok(x)$ que retorna $true$ si $x$ es una solución válida y $false$ en caso contrario.\\
+    Además sabemos que $ok(x)$ es $false$ cuando $x < k$ y $true$ cuando $x \ge k$ 
+
+    {\footnotesize
+    \begin{center}
+    \begin{tabular}{|c|| c | c | c || c | c | c |} 
+    \hline
+    $x$    & 0 & 1 & $\dots$ & $k$ & k+1 & $\dots$ \\
+    \hline\hline
+    $ok(x)$ & \textcolor{Mahogany}{False} & \textcolor{Mahogany}{False} & \textcolor{Mahogany}{False}  & \textcolor{OliveGreen}{True} & \textcolor{OliveGreen}{True} & \textcolor{OliveGreen}{True}  \\ 
+    \hline
+    \end{tabular}
+    \end{center}
+    }
+\end{frame}
+\begin{frame}{Solución al problema disparador}
+    \busquedaBinariaDisp
+    \centering
+    Complejidad\\
+    \pause
+    $O(O(ok(x) log(n)))$
+    
+\end{frame}
+\begin{frame}{Un problema}
+	\begin{block}{Evolucionando Pokémones}
+	Ash acaba de atrapar \textbf{$N$ pokémones}. Él tiene a su disposición \textbf{$M$ barras de caramelo}. \underline{Evolucionar} a un pokémon, le cuesta \underline{$X$} barras de caramelo. A su vez, puede \underline{vender} a un pokémon y recibir a cambio \underline{$Y$} barras de caramelo. ¿Cuál es la máxima cantidad de pokémones que puede evolucionar? 
+	\end{block}
+	\vspace{150pt}	
+\end{frame}
+
+\begin{frame}{Solución}
+	\pause
+	\begin{block}{Observación clave}
+	Si \textbf{fijamos la cantidad de pokémones que vamos a evolucionar}, digamos $k$ con $0 \leq k \leq N$. Entonces podemos vender a los $N-k$ pokemones que no vamos a evolucionar. Con esto, disponemos de $M + (N-k) \cdot Y$ barras de caramelo. 
+	
+	Para evolucionar a los $k$ pokemones, necesitamos tener al menos $k \cdot X$ barras de caramelos. O sea, debe valer que:
+	$$ k \cdot X \leq (N-k)\cdot Y + M $$ 
+	\end{block}
+	\begin{enumerate}
+		\pause
+		\item Solución: Probar todos los valores de $k$ entre $0$ y $N$ (inclusive), y tomar el de mayor valor que satisfaga la condición. Complejidad : $\mathcal{O}(N)$
+	\end{enumerate}
+\end{frame}
+
+\begin{frame}{Solución}
+	\begin{enumerate}
+		\setcounter{enumi}{1}
+		\pause
+		\item Solución: Notemos que \textbf{si podemos evolucionar $k$ pokemones, también podemos evolucionar $k-1$, $k-2$, $\dots$, $0$ pokemones}. En particular siempre podemos evolucionar $0$ pokemones. 
+		
+		De la misma forma, \textbf{si no podemos evolucionar $k$ pokemones, menos aún podremos evolucionar $k+1$, o $k+2$ pokemones} (o cualquier otro número mayor). En particular nunca podremos evolucionar $N+1$ pokemones.
+		\pause
+		
+		Entonces, tomando como propiedad: $P(k) : \text{``Puedo evolucionar } k \text{ pokemones''}$, \textbf{podemos hacer búsqueda binaria en la propiedad $P$}.
+		\pause
+		
+		Complejidad: $\mathcal{O}(\lg(N))$
+	\end{enumerate}
+\end{frame}
+
+\begin{frame}{Solución}
+	\pause
+	\begin{enumerate}
+		\setcounter{enumi}{2}
+		\item Sabemos que $0 \leq \alt<4->{\textcolor{Mahogany}{k \leq N}}{k \leq N}$. Y de la condición vista, podemos despejar una inecuación para $k$:
+		\pause
+		{\footnotesize
+		\begin{align*}
+				k \cdot X  & \leq (N-k)\cdot Y + M & \iff \\ 
+				k \cdot X  & \leq N\cdot Y - k\cdot Y + M & \iff \\ 
+				k \cdot X  + k \cdot Y & \leq N\cdot Y + M & \iff \\ 
+				k \cdot (X+Y) &  \leq N \cdot Y + M & \iff \\
+				\textcolor{blue}{k} \hspace{3pt}  & \textcolor{blue}{\leq  \frac{N\cdot Y + M}{X+Y}}
+		\end{align*}
+		}
+		\pause
+		Por lo tanto, la respuesta será : $$ \boxed{\text{min}\left ( \textcolor{Mahogany}{N},\textcolor{blue}{\left \lfloor \frac{N\cdot Y + M}{X+Y} \right \rfloor} \right ) }$$
+	{\small
+	\pause 
+	Complejidad: $\mathcal{O}(1)$	
+	\pause
+	\textcolor{NavyBlue}{https://csacademy.com/contest/archive/task/pokemon-evolution}
+	}
+
+	\end{enumerate}
+\end{frame}
+
+
+
+\section{Ventanas Deslizantes}
+
+\begin{frame}{Ventanas Deslizantes}
+	\begin{block}{Problema:}
+	Dado un arreglo de $n$ números \textbf{positivos}, y un número $x$, nos interesa saber si existe un subarreglo cuya suma sea $x$.
+	\end{block}
+	\pause
+	\begin{block}{Ejemplos:}
+   		\begin{itemize}
+
+			\item $A = [\ost{0}{2},\ost{1}{3},\alt<4->{\ust{\textcolor{OliveGreen}{2+5+1 = 8}}{\underbrace{\ost{\textcolor{OliveGreen}{2}}{2},\ost{\textcolor{OliveGreen}{3}}{5},\ost{\textcolor{OliveGreen}{4}}{1}}}}{\ost{2}{2},\ost{3}{5},\ost{4}{1}},\ost{5}{5},\ost{6}{2}, \ost{7}{3}]$. Buscamos sumar $ x = 8$
+		
+		
+			La respuesta es : \pause ``El subarreglo {\textcolor<4->{OliveGreen}{$[2..4]$} suma \textcolor<4->{OliveGreen}{$8$}}''
+			\pause
+			\item $A = [\ost{0}{2},\ost{1}{3},\ost{2}{2},\ost{3}{5},\ost{4}{1},\ost{5}{5},\ost{6}{2},\ost{7}{3}]$. Buscamos sumar $ x = 4$
+		
+			La respuesta es : \pause {``\textcolor<6->{Mahogany}{No hay subarreglo} de $A$ que sume \textcolor<6->{Mahogany}{4}}''
+		\end{itemize}
+	\end{block}	
+\end{frame}
+
+\begin{frame}{Solución}
+	\begin{enumerate}
+		\item \textbf{Probar todos los subarreglos posibles}. Es decir, todos los subarreglos $[i..j]$ con $0 \leq j < n$ e $ 0 \leq i \leq j$. Para cada uno de ellos calcular \texttt{suma}(i,j), la suma de los números en el subarreglo especificado y ver si es exactamente $x$.
+		
+		Complejidad : \pause $\mathcal{O}(n^3)$ u $\mathcal{O}(n^2)$ dependiendo de la implementación de la función \texttt{suma}.
+		\pause
+		\item Utilizar una \textbf{ventana deslizante} para resolver el problema. La idea es mantener \textbf{dos índices} que son los extremos de nuestra ventana deslizante, al extremo izquierdo lo llamaremos ``$i$'' y al derecho lo llamaremos ``$j$''.
+		Ambos extremos comienzan en el principio del arreglo, y en todo momento vamos a \textbf{mantener} cuánto vale \textbf{la suma de los números dentro de la ventana [i..j)} (notar que no incluimos el extremo derecho).
+	\end{enumerate}
+\end{frame}
+
+\begin{frame}
+	\begin{enumerate}
+		\setcounter{enumi}{1}
+		\item Utilizar una \textbf{ventana deslizante} para resolver el problema. La idea es mantener \textbf{dos índices} que son los extremos de nuestra ventana deslizante, al extremo izquierdo lo llamaremos ``$i$'' y al derecho lo llamaremos ``$j$''.
+		Ambos extremos comienzan en el principio del arreglo, y en todo momento vamos a \textbf{mantener} cuánto vale \textbf{la suma de los números dentro de la ventana [i..j)} (notar que no incluimos el extremo derecho).
+	\end{enumerate}
+	\pause
+	Ejemplo: Si $\textcolor{OliveGreen}{i = 1}$ y $\textcolor{Mahogany}{j = 4}$, mantenemos la suma en el subarreglo [$\textcolor{OliveGreen}{i}$..$\textcolor{Mahogany}{j}$) = [1,4) = [1..3].
+	{ \LARGE
+	\alt<3->{$$A = [\ost{0}{2},\ust{\texttt{suma} = 10}{\underbrace{\ost{\ost{\textcolor{OliveGreen}{i}}{1}}{3},\ost{2}{2},\ost{3}{5}}},\ost{\ost{\textcolor{Mahogany}{j}}{4}}{1},\ost{5}{5},\ost{6}{2},\ost{7}{3}] $$}{$$ A = [\ost{0}{2},\ost{1}{3},\ost{2}{2},\ost{3}{5},\ost{4}{1},\ost{5}{5},\ost{6}{2},\ost{7}{3}] $$}
+	}
+\end{frame}
+
+\begin{frame}{Entrada}
+	\begin{center}
+	Buscamos sumar $x = 8$
+	{ \Huge
+	$$A = [\ost{0}{2},\ost{1}{3},\ost{2}{2},\ost{3}{5},\ost{4}{1},\ost{5}{5},\ost{6}{2},\ost{7}{3}]$$}
+	\end{center}
+\end{frame}
+
+\begin{frame}{Paso 1}
+	\begin{center}
+	Buscamos sumar $x = 8$
+	
+	{ \Large
+		$\textcolor{NavyBlue}{\texttt{suma} = 0} < x$ \visible<2->{$ \rightarrow $ \textcolor{Plum}{$\text{Aumento } j$}}
+	}	
+	{ \Huge
+	$$A = [\ost{\ost{\textcolor{OliveGreen}{i} \textcolor{Mahogany}{j}}{0}}{2},\ost{1}{3},\ost{2}{2},\ost{3}{5},\ost{4}{1},\ost{5}{5},\ost{6}{2},\ost{7}{3}]$$}
+	\end{center}
+\end{frame}
+
+\begin{frame}{Paso 2}
+	\begin{center}
+	Buscamos sumar $x = 8$
+	
+	{ \Large
+		$\textcolor{NavyBlue}{\texttt{suma} = 2} < x$ \visible<2->{$ \rightarrow $ \textcolor{Plum}{$\text{Aumento } j$}}
+	}	
+	{ \Huge
+	$$A = [\underbrace{\ost{\ost{\textcolor{OliveGreen}{i}}{0}}{\textcolor{NavyBlue}{2}}},\ost{\ost{\textcolor{Mahogany}{j}}{1}}{3},\ost{2}{2},\ost{3}{5},\ost{4}{1},\ost{5}{5},\ost{6}{2},\ost{7}{3}]$$}
+	\end{center}
+\end{frame}
+
+\begin{frame}{Paso 3}
+	\begin{center}
+	Buscamos sumar $x = 8$
+	
+	{ \Large
+		$\textcolor{NavyBlue}{\texttt{suma} = 5} < x$ \visible<2->{$ \rightarrow $ \textcolor{Plum}{$\text{Aumento } j$}}
+	}	
+	{ \Huge
+	$$A = [\underbrace{\ost{\ost{\textcolor{OliveGreen}{i}}{0}}{\textcolor{NavyBlue}{2}},\ost{1}{\textcolor{NavyBlue}{3}}},\ost{\ost{\textcolor{Mahogany}{j}}{2}}{2},\ost{3}{5},\ost{4}{1},\ost{5}{5},\ost{6}{2},\ost{7}{3}]$$}
+	\end{center}
+\end{frame}
+
+\begin{frame}{Paso 4}
+	\begin{center}
+	Buscamos sumar $x = 8$
+	
+	{ \Large
+		$\textcolor{NavyBlue}{\texttt{suma} = 7} < x$ \visible<2->{$ \rightarrow $ \textcolor{Plum}{$\text{Aumento } j$}}
+	}	
+	{ \Huge
+	$$A = [\underbrace{\ost{\ost{\textcolor{OliveGreen}{i}}{0}}{\textcolor{NavyBlue}{2}},\ost{1}{\textcolor{NavyBlue}{3}},\ost{2}{\textcolor{NavyBlue}{2}}},\ost{\ost{\textcolor{Mahogany}{j}}{3}}{5},\ost{4}{1},\ost{5}{5},\ost{6}{2},\ost{7}{3}]$$}
+	\end{center}
+\end{frame}
+
+\begin{frame}{Paso 5}
+	\begin{center}
+	Buscamos sumar $x = 8$
+	
+	{ \Large
+		$\textcolor{NavyBlue}{\texttt{suma} = 12} \hspace{3pt} \textcolor{red}{ > } \hspace{3pt} x$ \visible<2->{$ \rightarrow $ \textcolor{Plum}{$\text{Aumento } i$}}
+	}	
+	{ \Huge
+	$$A = [\underbrace{\ost{\ost{\textcolor{OliveGreen}{i}}{0}}{\textcolor{NavyBlue}{2}},\ost{1}{\textcolor{NavyBlue}{3}},\ost{2}{\textcolor{NavyBlue}{2}},\ost{3}{\textcolor{NavyBlue}{5}}},\ost{\ost{\textcolor{Mahogany}{j}}{4}}{1},\ost{5}{5},\ost{6}{2},\ost{7}{3}]$$}
+	\end{center}
+\end{frame}
+
+\begin{frame}{Paso 6}
+	\begin{center}
+	Buscamos sumar $x = 8$
+	
+	{ \Large
+		$\textcolor{NavyBlue}{\texttt{suma} = 10} > x$ \visible<2->{$ \rightarrow $ \textcolor{Plum}{$\text{Aumento } i$}}
+	}	
+	{ \Huge
+	$$A = [\ost{0}{2},\underbrace{\ost{\ost{\textcolor{OliveGreen}{i}}{1}}{\textcolor{NavyBlue}{3}},\ost{2}{\textcolor{NavyBlue}{2}},\ost{3}{\textcolor{NavyBlue}{5}}},\ost{\ost{\textcolor{Mahogany}{j}}{4}}{1},\ost{5}{5},\ost{6}{2},\ost{7}{3}]$$}
+	\end{center}
+\end{frame}
+
+\begin{frame}{Paso 7}
+	\begin{center}
+	Buscamos sumar $x = 8$
+	
+	{ \Large
+		$\textcolor{NavyBlue}{\texttt{suma} = 7} < x$ \visible<2->{$ \rightarrow $ \textcolor{Plum}{$\text{Aumento } j$}}
+	}	
+	{ \Huge
+	$$A = [\ost{0}{2},\ost{1}{3},\underbrace{\ost{\ost{\textcolor{OliveGreen}{i}}{2}}{\textcolor{NavyBlue}{2}},\ost{3}{\textcolor{NavyBlue}{5}}},\ost{\ost{\textcolor{Mahogany}{j}}{4}}{1},\ost{5}{5},\ost{6}{2},\ost{7}{3}]$$}
+	\end{center}
+\end{frame}
+
+\begin{frame}{Paso 8}
+	\begin{center}
+	Buscamos sumar $x = 8$
+	
+	{ \Large
+		$\textcolor{NavyBlue}{\texttt{suma} = 8} = x$ \visible<2->{$ \rightarrow $ \textcolor{Plum}{Podemos terminar}}
+	}	
+	{ \Huge
+	$$A = [\ost{0}{2},\ost{1}{3},\underbrace{\ost{\ost{\textcolor{OliveGreen}{i}}{2}}{\textcolor{NavyBlue}{2}},\ost{3}{\textcolor{NavyBlue}{5}},\ost{4}{\textcolor{NavyBlue}{1}}},\ost{\ost{\textcolor{Mahogany}{j}}{5}}{5},\ost{6}{2},\ost{7}{3}]$$}
+	\end{center}
+\end{frame}
+
+\begin{frame}{Análisis}
+	\begin{itemize}
+		\item ¿Cuántos pasos hace el algoritmo?
+		
+		\underline{Respuesta} : \pause En cada paso, o bien \textbf{aumenta i} o \textbf{aumenta j}. Cada uno de ellos puede ser aumentado a lo sumo $n$ veces. Por lo tanto al cabo de \textbf{$2n$ pasos} en el peor caso, finaliza nuestro algoritmo.
+		\pause
+		\item ¿Por qué es importante que los números sean \textbf{positivos}?
+		
+		\underline{Respuesta} : \pause Porque nos permite saber que si en algún momento $\texttt{suma} > x$, entonces todas las ventanas que tienen el mismo valor de $i$ y un $j$ mayor tendrán una suma mayor y podemos no mirarlas (de alguna forma, podemos afirmar que \textbf{``ya nos pasamos''}).
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{Código}
+	\ventanaDeslizante
+\end{frame}
+
+\section{2SUM}
+\begin{frame}{2SUM}
+	\begin{block}{Problema:}
+	Dado un arreglo de $n$ números, y un número $x$. Queremos encontrar dos números del arreglo que sumen $x$, o reportar que no existe tal par. 
+	\end{block}
+	\pause
+	\begin{block}{Ejemplos:}
+   		\begin{itemize}
+
+			\item $A = [\alt<4->{\textcolor{OliveGreen}{\ost{0}{7}}}{\ost{0}{7}},\ost{1}{10},{\ost{2}{4},\ost{3}{1},\ost{4}{9}},\alt<4->{\textcolor{OliveGreen}{\ost{5}{5}}}{\ost{5}{5}},\ost{6}{9}, \ost{7}{6}]$. Buscamos sumar $ x = 12$
+		
+		
+			La respuesta es : \pause ``Sumando {\textcolor<4->{OliveGreen}{$A[0]$}} y {\textcolor<4->{OliveGreen}{$A[5]$} obtenemos \textcolor<4->{OliveGreen}{$12$}}''
+			\pause
+			\item $A = [\ost{0}{7},\ost{1}{10},\ost{2}{4},\ost{3}{1},\ost{4}{9},\ost{5}{5},\ost{6}{9},\ost{7}{6}]$. Buscamos sumar $ x = 4$
+		
+			La respuesta es : \pause {``\textcolor<6->{Mahogany}{No hay dos elementos} de $A$ que sumen \textcolor<6->{Mahogany}{4}}''
+		\end{itemize}
+	\end{block}
+\end{frame}
+
+\begin{frame}{Solución}
+	\begin{block}{Observación clave}
+		Es importante notar que el orden de los números en el arreglo A no juega ningún rol. Entonces podemos asumir que tienen el orden que nos convenga. En particular, podemos asumir que el arreglo está \textbf{ordenado en forma creciente} (u ordenarlo en $\mathcal{O}(n \lg(n))$ )
+	\end{block}
+	\pause
+	\begin{enumerate}
+		\item Probar todos los pares de índices, y ver si esos dos números suman o no $x$. De existir un par que sí, reportarlo. Complejidad $\mathcal{O}(n^2)$
+		\pause
+		\item Utilizar una variante de la técnica que vimos recién para resolver el problema. En lugar de tener dos índices que siempre aumentan, ahora tendremos dos índices. \textbf{Uno siempre aumenta, el otro siempre disminuye}. Por lo tanto también haremos \textbf{a lo sumo 2n pasos}. Complejidad $\mathcal{O}(n)$.
+	\end{enumerate}
+\end{frame}
+
+\begin{frame}{Entrada}
+	\begin{center}
+	Buscamos sumar $x = 12$
+	{ \Huge
+	$$A = [\ost{0}{1},\ost{1}{4},\ost{2}{5},\ost{3}{6},\ost{4}{7},\ost{5}{9},\ost{6}{9},\ost{7}{10}]$$}
+	\end{center}
+\end{frame}
+
+\begin{frame}{Paso 1}
+	\begin{center}
+	Buscamos sumar $x = 12$
+	
+	\vspace{6pt}
+	{ \Large
+		$\ost{\textcolor{NavyBlue}{11}}{\overbrace{A[\textcolor{OliveGreen}{i}] + A[\textcolor{Mahogany}{j}]}} < x$ \visible<2->{$ \rightarrow $ \textcolor{Plum}{$\text{Aumento } i$}}
+	}	
+	{ \Huge
+	$$A = [\ost{\ost{\textcolor{OliveGreen}{i}}{0}}{\textcolor{NavyBlue}{1}},\ost{1}{4},\ost{2}{5},\ost{3}{6},\ost{4}{7},\ost{5}{9},\ost{6}{9},\ost{\ost{\textcolor{Mahogany}{j}}{7}}{{\textcolor{NavyBlue}{10}}}]$$}
+	\end{center}
+\end{frame}
+
+\begin{frame}{Paso 2}
+	\begin{center}
+	Buscamos sumar $x = 12$
+	
+	\vspace{6pt}
+	{ \Large
+		$\ost{\textcolor{NavyBlue}{14}}{\overbrace{A[\textcolor{OliveGreen}{i}] + A[\textcolor{Mahogany}{j}]}} > x$ \visible<2->{$ \rightarrow $ \textcolor{Plum}{$\text{Disminuyo } j$}}
+	}	
+	{ \Huge
+	$$A = [\ost{0}{1},\ost{\ost{\textcolor{OliveGreen}{i}}{1}}{\textcolor{NavyBlue}{4}},\ost{2}{5},\ost{3}{6},\ost{4}{7},\ost{5}{9},\ost{6}{9},\ost{\ost{\textcolor{Mahogany}{j}}{7}}{{\textcolor{NavyBlue}{10}}}]$$}
+	\end{center}
+\end{frame}
+
+\begin{frame}{Paso 3}
+	\begin{center}
+	Buscamos sumar $x = 12$
+	
+	\vspace{6pt}
+	{ \Large
+		$\ost{\textcolor{NavyBlue}{13}}{\overbrace{A[\textcolor{OliveGreen}{i}] + A[\textcolor{Mahogany}{j}]}} > x$ \visible<2->{$ \rightarrow $ \textcolor{Plum}{$\text{Disminuyo } j$}}
+	}	
+	{ \Huge
+	$$A = [\ost{0}{1},\ost{\ost{\textcolor{OliveGreen}{i}}{1}}{\textcolor{NavyBlue}{4}},\ost{2}{5},\ost{3}{6},\ost{4}{7},\ost{5}{9},\ost{\ost{\textcolor{Mahogany}{j}}{6}}{\textcolor{NavyBlue}{9}},\ost{7}{10}]$$}
+	\end{center}
+\end{frame}
+
+\begin{frame}{Paso 4}
+	\begin{center}
+	Buscamos sumar $x = 12$
+	
+	\vspace{6pt}
+	{ \Large
+		$\ost{\textcolor{NavyBlue}{13}}{\overbrace{A[\textcolor{OliveGreen}{i}] + A[\textcolor{Mahogany}{j}]}} > x$ \visible<2->{$ \rightarrow $ \textcolor{Plum}{$\text{Disminuyo } j$}}
+	}	
+	{ \Huge
+	$$A = [\ost{0}{1},\ost{\ost{\textcolor{OliveGreen}{i}}{1}}{\textcolor{NavyBlue}{4}},\ost{2}{5},\ost{3}{6},\ost{4}{7},\ost{\ost{\textcolor{Mahogany}{j}}{5}}{\textcolor{NavyBlue}{9}},\ost{6}{9},\ost{7}{10}]$$}
+	\end{center}
+\end{frame}
+
+\begin{frame}{Paso 5}
+	\begin{center}
+	Buscamos sumar $x = 12$
+	
+	\vspace{6pt}
+	{ \Large
+		$\ost{\textcolor{NavyBlue}{11}}{\overbrace{A[\textcolor{OliveGreen}{i}] + A[\textcolor{Mahogany}{j}]}} < x$ \visible<2->{$ \rightarrow $ \textcolor{Plum}{$\text{Aumento } i$}}
+	}	
+	{ \Huge
+	$$A = [\ost{0}{1},\ost{\ost{\textcolor{OliveGreen}{i}}{1}}{\textcolor{NavyBlue}{4}},\ost{2}{5},\ost{3}{6},\ost{\ost{\textcolor{Mahogany}{j}}{4}}{\textcolor{NavyBlue}{7}},\ost{5}{9},\ost{6}{9},\ost{7}{10}]$$}
+	\end{center}
+\end{frame}
+
+\begin{frame}{Paso 6}
+	\begin{center}
+	Buscamos sumar $x = 12$
+	
+	\vspace{6pt}
+	{ \Large
+		$\ost{\textcolor{NavyBlue}{12}}{\overbrace{A[\textcolor{OliveGreen}{i}] + A[\textcolor{Mahogany}{j}]}} = x$ \visible<2->{$ \rightarrow $ \textcolor{Plum}{Podemos terminar}}
+	}	
+	{ \Huge
+	$$A = [\ost{0}{1},\ost{1}{4},\ost{\ost{\textcolor{OliveGreen}{i}}{2}}{\textcolor{NavyBlue}{5}},\ost{3}{6},\ost{\ost{\textcolor{Mahogany}{j}}{4}}{\textcolor{NavyBlue}{7}},\ost{5}{9},\ost{6}{9},\ost{7}{10}]$$}
+	\end{center}
+\end{frame}
+
+\begin{frame}{Código}
+	\ventanaDeslizanteDOSSUM
+\end{frame}
+
+
+
+\begin{frame}{Fuentes y Problemas}
+    Fuentes
+    \begin{itemize}
+        \item \href{https://cses.fi/book/book.pdf}{Competitive Programmer's Handbook}
+        \item Mezcla de charla \href{https://www.pc-arg.com/media/attachment/binary_twopointers.pdf}{Guty} y \href{https://www.pc-arg.com/media/attachment/bs-sorting-2022.pdf}{Julian Ferres}
+    \end{itemize}
+    Problemitas
+    \begin{itemize}
+        \item \href{https://cses.fi/problemset/task/1620}{Factory Machines}
+        \item \href{https://codeforces.com/problemset/problem/670/D1}{Magic powder - 1}
+        \item \href{https://cses.fi/problemset/task/1085}{Array Division}
+        \item \href{https://cses.fi/problemset/task/2422}{Multiplication Table}
+    \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{Consultas}
+Pueden consultarme durante esta semana, o me pueden enviar un mail a:
+        \begin{itemize}
+            \item \href{mailto:mramos@frsf.utn.edu.ar}{mramos@frsf.utn.edu.ar}
+        \end{itemize}
+        %\bibliography{ref}
+\end{frame}
+
+
+\end{document}
